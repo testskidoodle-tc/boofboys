@@ -38,12 +38,11 @@ const slides = [
 ];
 
 const YT_ID = "_ALPYlwYzGU";
+const YT_BASE = `https://www.youtube.com/embed/${YT_ID}`;
+
 let index = 0;
-let player = null;
 let muted = false;
 let started = false;
-let musicRequested = false;
-let apiReady = false;
 let currentView = "home";
 
 const photo = document.getElementById("photo");
@@ -60,6 +59,7 @@ const enterBtn = document.getElementById("enter-btn");
 const nowPlaying = document.getElementById("now-playing");
 const goGalleryBtn = document.getElementById("go-gallery");
 const replayMusicBtn = document.getElementById("replay-music");
+const playerWrap = document.getElementById("player-wrap");
 const tabs = document.querySelectorAll(".tab");
 const homeView = document.getElementById("home-view");
 const galleryView = document.getElementById("gallery-view");
@@ -125,6 +125,40 @@ function buildThumbs() {
   });
 }
 
+function buildEmbedUrl({ autoplay = true, mute = false } = {}) {
+  const params = new URLSearchParams({
+    autoplay: autoplay ? "1" : "0",
+    mute: mute ? "1" : "0",
+    loop: "1",
+    playlist: YT_ID,
+    controls: "0",
+    modestbranding: "1",
+    playsinline: "1",
+    rel: "0",
+    enablejsapi: "1",
+  });
+
+  return `${YT_BASE}?${params.toString()}`;
+}
+
+function getAudioFrame() {
+  return document.getElementById("yt-audio");
+}
+
+function ensureAudioFrame() {
+  let frame = getAudioFrame();
+  if (frame) return frame;
+
+  frame = document.createElement("iframe");
+  frame.id = "yt-audio";
+  frame.title = "Background music";
+  frame.setAttribute("allow", "autoplay; encrypted-media; fullscreen");
+  frame.setAttribute("referrerpolicy", "origin");
+  playerWrap.innerHTML = "";
+  playerWrap.appendChild(frame);
+  return frame;
+}
+
 function updateMusicUi() {
   if (started && !muted) {
     nowPlaying.classList.remove("hidden");
@@ -138,161 +172,39 @@ function updateMusicUi() {
   }
 }
 
-function loadYouTubeApi() {
-  if (window.YT && window.YT.Player) {
-    initPlayer();
-    return;
-  }
-
-  const tag = document.createElement("script");
-  tag.src = "https://www.youtube.com/iframe_api";
-  document.head.appendChild(tag);
-}
-
-function initPlayer() {
-  if (player || !document.getElementById("player")) return;
-
-  player = new YT.Player("player", {
-    height: "200",
-    width: "200",
-    videoId: YT_ID,
-    playerVars: {
-      autoplay: 0,
-      controls: 0,
-      disablekb: 1,
-      fs: 0,
-      loop: 1,
-      playlist: YT_ID,
-      modestbranding: 1,
-      rel: 0,
-      playsinline: 1,
-      origin: window.location.origin,
-    },
-    events: {
-      onReady: onPlayerReady,
-      onStateChange: onPlayerStateChange,
-      onError: onPlayerError,
-    },
-  });
-}
-
-function onPlayerReady() {
-  apiReady = true;
-  if (musicRequested) {
-    attemptPlay();
-  }
-}
-
-function onPlayerStateChange(event) {
-  if (event.data === YT.PlayerState.ENDED) {
-    player.seekTo(0, true);
-    player.playVideo();
-  }
-
-  if (event.data === YT.PlayerState.PLAYING && !muted) {
-    started = true;
-    updateMusicUi();
-  }
-}
-
-function onPlayerError() {
-  fallbackIframePlay();
-}
-
-function attemptPlay() {
-  if (!player || !apiReady) return;
-
-  try {
-    player.unMute();
-    player.setVolume(60);
-    const result = player.playVideo();
-
-    if (result && typeof result.then === "function") {
-      result.catch(() => fallbackIframePlay());
-    }
-
-    started = true;
-    muted = false;
-    updateMusicUi();
-  } catch {
-    fallbackIframePlay();
-  }
-}
-
-function fallbackIframePlay() {
-  const wrap = document.getElementById("player-wrap");
-  wrap.innerHTML = `<iframe
-    id="yt-fallback"
-    src="https://www.youtube.com/embed/${YT_ID}?autoplay=1&mute=0&loop=1&playlist=${YT_ID}&controls=0&modestbranding=1&playsinline=1"
-    allow="autoplay; encrypted-media"
-    title="Background music"
-  ></iframe>`;
-
-  started = true;
-  muted = false;
-  updateMusicUi();
-}
-
 function startMusic() {
-  musicRequested = true;
-  loadYouTubeApi();
+  const frame = ensureAudioFrame();
+  const shouldMute = muted;
 
-  if (window.YT && window.YT.Player && !player) {
-    initPlayer();
-  }
-
-  if (apiReady && player) {
-    attemptPlay();
-  } else {
-    window.setTimeout(() => {
-      if (musicRequested && apiReady) attemptPlay();
-    }, 800);
-  }
+  frame.src = buildEmbedUrl({ autoplay: true, mute: shouldMute });
+  started = true;
+  updateMusicUi();
 }
 
 function toggleMute() {
   if (!started) {
+    muted = false;
     startMusic();
     return;
   }
 
-  const iframe = document.getElementById("yt-fallback");
-  if (iframe) {
-    const nextSrc = muted
-      ? iframe.src.replace("mute=1", "mute=0")
-      : iframe.src.replace("mute=0", "mute=1");
-    iframe.src = nextSrc.includes("mute=") ? nextSrc : `${iframe.src}&mute=${muted ? 0 : 1}`;
-    muted = !muted;
-    updateMusicUi();
-    return;
-  }
-
-  if (!player) return;
-
-  if (muted) {
-    player.unMute();
-    player.setVolume(60);
-    player.playVideo();
-    muted = false;
-  } else {
-    player.mute();
-    muted = true;
-  }
-
+  muted = !muted;
+  const frame = ensureAudioFrame();
+  frame.src = buildEmbedUrl({ autoplay: true, mute: muted });
   updateMusicUi();
 }
 
-window.onYouTubeIframeAPIReady = function onYouTubeIframeAPIReady() {
-  initPlayer();
-};
-
 function enterSite() {
   enterOverlay.classList.add("hidden");
+  muted = false;
   startMusic();
 }
 
 enterBtn.addEventListener("click", enterSite);
-replayMusicBtn.addEventListener("click", startMusic);
+replayMusicBtn.addEventListener("click", () => {
+  muted = false;
+  startMusic();
+});
 goGalleryBtn.addEventListener("click", () => setView("gallery"));
 
 tabs.forEach((tab) => {
