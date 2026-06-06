@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>boofboys.xyz</title>
+  <meta name="description" content="boofboys gallery" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="player" aria-hidden="true"></div>
+
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="brand-main">BOOFBOYS</span>
+      <span class="brand-sub">.xyz</span>
+    </div>
+    <div class="top-right">
+      <button id="mute-btn" class="icon-btn" type="button" aria-label="Toggle music">
+        <span id="mute-icon">♪</span>
+      </button>
+      <span id="counter" class="counter">01 / 06</span>
+    </div>
+  </header>
+
+  <main class="stage">
+    <button id="prev" class="nav nav-left" type="button" aria-label="Previous image">‹</button>
+
+    <figure class="frame">
+      <img id="photo" src="images/tco-lv-pool.jpg" alt="tco at the pool" />
+      <figcaption class="caption">
+        <p id="name" class="name">tco</p>
+        <p id="tag" class="tag">lv by the pool</p>
+      </figcaption>
+    </figure>
+
+    <button id="next" class="nav nav-right" type="button" aria-label="Next image">›</button>
+  </main>
+
+  <nav class="thumbs" id="thumbs" aria-label="Gallery thumbnails"></nav>
+
+  <div id="enter" class="enter">
+    <button id="enter-btn" type="button">enter boofboys.xyz</button>
+    <p class="enter-note">music plays automatically</p>
+  </div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js"></script>
+</body>
+</html>
