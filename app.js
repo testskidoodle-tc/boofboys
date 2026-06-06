@@ -42,6 +42,9 @@ let index = 0;
 let player = null;
 let muted = false;
 let started = false;
+let musicRequested = false;
+let apiReady = false;
+let currentView = "home";
 
 const photo = document.getElementById("photo");
 const nameEl = document.getElementById("name");
@@ -54,12 +57,29 @@ const muteBtn = document.getElementById("mute-btn");
 const muteIcon = document.getElementById("mute-icon");
 const enterOverlay = document.getElementById("enter");
 const enterBtn = document.getElementById("enter-btn");
+const nowPlaying = document.getElementById("now-playing");
+const goGalleryBtn = document.getElementById("go-gallery");
+const replayMusicBtn = document.getElementById("replay-music");
+const tabs = document.querySelectorAll(".tab");
+const homeView = document.getElementById("home-view");
+const galleryView = document.getElementById("gallery-view");
 
 function pad(n) {
   return String(n).padStart(2, "0");
 }
 
-function renderSlide(newIndex, direction = 1) {
+function setView(view) {
+  currentView = view;
+  homeView.classList.toggle("active", view === "home");
+  galleryView.classList.toggle("active", view === "gallery");
+  counterEl.classList.toggle("hidden", view !== "gallery");
+
+  tabs.forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.view === view);
+  });
+}
+
+function renderSlide(newIndex) {
   const slide = slides[newIndex];
   index = newIndex;
 
@@ -81,11 +101,11 @@ function renderSlide(newIndex, direction = 1) {
 }
 
 function next() {
-  renderSlide((index + 1) % slides.length, 1);
+  renderSlide((index + 1) % slides.length);
 }
 
 function prev() {
-  renderSlide((index - 1 + slides.length) % slides.length, -1);
+  renderSlide((index - 1 + slides.length) % slides.length);
 }
 
 function buildThumbs() {
@@ -105,36 +125,36 @@ function buildThumbs() {
   });
 }
 
-function startMusic() {
-  if (!player || started) return;
-  started = true;
-  player.unMute();
-  player.setVolume(35);
-  player.playVideo();
-  muted = false;
-  muteIcon.textContent = "♪";
-}
-
-function toggleMute() {
-  if (!player) return;
-  if (!started) {
-    startMusic();
-    return;
-  }
-  if (muted) {
-    player.unMute();
+function updateMusicUi() {
+  if (started && !muted) {
+    nowPlaying.classList.remove("hidden");
     muteIcon.textContent = "♪";
+  } else if (started && muted) {
+    nowPlaying.classList.add("hidden");
+    muteIcon.textContent = "ø";
   } else {
-    player.mute();
+    nowPlaying.classList.add("hidden");
     muteIcon.textContent = "ø";
   }
-  muted = !muted;
 }
 
-window.onYouTubeIframeAPIReady = function onYouTubeIframeAPIReady() {
+function loadYouTubeApi() {
+  if (window.YT && window.YT.Player) {
+    initPlayer();
+    return;
+  }
+
+  const tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+}
+
+function initPlayer() {
+  if (player || !document.getElementById("player")) return;
+
   player = new YT.Player("player", {
-    height: "0",
-    width: "0",
+    height: "200",
+    width: "200",
     videoId: YT_ID,
     playerVars: {
       autoplay: 0,
@@ -145,23 +165,138 @@ window.onYouTubeIframeAPIReady = function onYouTubeIframeAPIReady() {
       playlist: YT_ID,
       modestbranding: 1,
       rel: 0,
+      playsinline: 1,
+      origin: window.location.origin,
     },
     events: {
-      onReady: () => {
-        player.mute();
-      },
-      onStateChange: (event) => {
-        if (event.data === YT.PlayerState.ENDED) {
-          player.playVideo();
-        }
-      },
+      onReady: onPlayerReady,
+      onStateChange: onPlayerStateChange,
+      onError: onPlayerError,
     },
   });
+}
+
+function onPlayerReady() {
+  apiReady = true;
+  if (musicRequested) {
+    attemptPlay();
+  }
+}
+
+function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.ENDED) {
+    player.seekTo(0, true);
+    player.playVideo();
+  }
+
+  if (event.data === YT.PlayerState.PLAYING && !muted) {
+    started = true;
+    updateMusicUi();
+  }
+}
+
+function onPlayerError() {
+  fallbackIframePlay();
+}
+
+function attemptPlay() {
+  if (!player || !apiReady) return;
+
+  try {
+    player.unMute();
+    player.setVolume(60);
+    const result = player.playVideo();
+
+    if (result && typeof result.then === "function") {
+      result.catch(() => fallbackIframePlay());
+    }
+
+    started = true;
+    muted = false;
+    updateMusicUi();
+  } catch {
+    fallbackIframePlay();
+  }
+}
+
+function fallbackIframePlay() {
+  const wrap = document.getElementById("player-wrap");
+  wrap.innerHTML = `<iframe
+    id="yt-fallback"
+    src="https://www.youtube.com/embed/${YT_ID}?autoplay=1&mute=0&loop=1&playlist=${YT_ID}&controls=0&modestbranding=1&playsinline=1"
+    allow="autoplay; encrypted-media"
+    title="Background music"
+  ></iframe>`;
+
+  started = true;
+  muted = false;
+  updateMusicUi();
+}
+
+function startMusic() {
+  musicRequested = true;
+  loadYouTubeApi();
+
+  if (window.YT && window.YT.Player && !player) {
+    initPlayer();
+  }
+
+  if (apiReady && player) {
+    attemptPlay();
+  } else {
+    window.setTimeout(() => {
+      if (musicRequested && apiReady) attemptPlay();
+    }, 800);
+  }
+}
+
+function toggleMute() {
+  if (!started) {
+    startMusic();
+    return;
+  }
+
+  const iframe = document.getElementById("yt-fallback");
+  if (iframe) {
+    const nextSrc = muted
+      ? iframe.src.replace("mute=1", "mute=0")
+      : iframe.src.replace("mute=0", "mute=1");
+    iframe.src = nextSrc.includes("mute=") ? nextSrc : `${iframe.src}&mute=${muted ? 0 : 1}`;
+    muted = !muted;
+    updateMusicUi();
+    return;
+  }
+
+  if (!player) return;
+
+  if (muted) {
+    player.unMute();
+    player.setVolume(60);
+    player.playVideo();
+    muted = false;
+  } else {
+    player.mute();
+    muted = true;
+  }
+
+  updateMusicUi();
+}
+
+window.onYouTubeIframeAPIReady = function onYouTubeIframeAPIReady() {
+  initPlayer();
 };
 
-enterBtn.addEventListener("click", () => {
+function enterSite() {
   enterOverlay.classList.add("hidden");
   startMusic();
+}
+
+enterBtn.addEventListener("click", enterSite);
+replayMusicBtn.addEventListener("click", startMusic);
+goGalleryBtn.addEventListener("click", () => setView("gallery"));
+
+tabs.forEach((tab) => {
+  tab.addEventListener("click", () => setView(tab.dataset.view));
 });
 
 prevBtn.addEventListener("click", prev);
@@ -169,6 +304,7 @@ nextBtn.addEventListener("click", next);
 muteBtn.addEventListener("click", toggleMute);
 
 window.addEventListener("keydown", (event) => {
+  if (currentView !== "gallery") return;
   if (event.key === "ArrowRight") next();
   if (event.key === "ArrowLeft") prev();
 });
@@ -185,6 +321,7 @@ window.addEventListener(
 window.addEventListener(
   "touchend",
   (event) => {
+    if (currentView !== "gallery") return;
     const delta = event.changedTouches[0].screenX - touchStartX;
     if (Math.abs(delta) < 40) return;
     if (delta < 0) next();
@@ -194,3 +331,4 @@ window.addEventListener(
 );
 
 buildThumbs();
+updateMusicUi();

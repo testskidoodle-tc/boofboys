@@ -11,7 +11,9 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="player" aria-hidden="true"></div>
+  <div id="player-wrap" aria-hidden="true">
+    <div id="player"></div>
+  </div>
 
   <div class="grain" aria-hidden="true"></div>
 
@@ -20,36 +22,107 @@
       <span class="brand-main">BOOFBOYS</span>
       <span class="brand-sub">.xyz</span>
     </div>
+    <nav class="tabs" id="tabs" aria-label="Site sections">
+      <button class="tab active" type="button" data-view="home">home</button>
+      <button class="tab" type="button" data-view="gallery">gallery</button>
+    </nav>
     <div class="top-right">
+      <span id="now-playing" class="now-playing hidden">♪ you're on doxbin</span>
       <button id="mute-btn" class="icon-btn" type="button" aria-label="Toggle music">
-        <span id="mute-icon">♪</span>
+        <span id="mute-icon">ø</span>
       </button>
-      <span id="counter" class="counter">01 / 06</span>
+      <span id="counter" class="counter hidden">01 / 06</span>
     </div>
   </header>
 
-  <main class="stage">
-    <button id="prev" class="nav nav-left" type="button" aria-label="Previous image">‹</button>
+  <section id="home-view" class="view active">
+    <div class="home-grid">
+      <div class="home-hero panel">
+        <p class="eyebrow">official archive</p>
+        <h1 class="home-title">the boofboys<br />experience</h1>
+        <p class="home-lead">
+          curated photo gallery of the squad. six legendary moments.
+          one soundtrack. zero apologies.
+        </p>
+        <div class="home-actions">
+          <button id="go-gallery" class="primary-btn" type="button">view gallery</button>
+          <button id="replay-music" class="ghost-btn" type="button">play music</button>
+        </div>
+      </div>
 
-    <figure class="frame">
-      <img id="photo" src="images/tco-lv-pool.jpg" alt="tco at the pool" />
-      <figcaption class="caption">
-        <p id="name" class="name">tco</p>
-        <p id="tag" class="tag">lv by the pool</p>
-      </figcaption>
-    </figure>
+      <div class="home-details panel">
+        <h2 class="section-title">details</h2>
+        <dl class="detail-list">
+          <div class="detail-row">
+            <dt>domain</dt>
+            <dd>boofboys.xyz</dd>
+          </div>
+          <div class="detail-row">
+            <dt>photos</dt>
+            <dd>6 archived shots</dd>
+          </div>
+          <div class="detail-row">
+            <dt>soundtrack</dt>
+            <dd>you're on doxbin — james bandz</dd>
+          </div>
+          <div class="detail-row">
+            <dt>status</dt>
+            <dd id="site-status">online</dd>
+          </div>
+        </dl>
+      </div>
 
-    <button id="next" class="nav nav-right" type="button" aria-label="Next image">›</button>
-  </main>
+      <div class="home-roster panel">
+        <h2 class="section-title">roster</h2>
+        <ul class="roster-list">
+          <li>
+            <span class="roster-name">tco</span>
+            <span class="roster-note">lv pool + orange chicken arc</span>
+          </li>
+          <li>
+            <span class="roster-name">dominik palasz</span>
+            <span class="roster-note">aka koleah · blue hoodie</span>
+          </li>
+          <li>
+            <span class="roster-name">ralph ortiz</span>
+            <span class="roster-note">afro portrait + aba awakened</span>
+          </li>
+          <li>
+            <span class="roster-name">noah jenkins</span>
+            <span class="roster-note">orange jersey mirror selfie</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
 
-  <nav class="thumbs" id="thumbs" aria-label="Gallery thumbnails"></nav>
+  <section id="gallery-view" class="view">
+    <main class="stage">
+      <button id="prev" class="nav nav-left" type="button" aria-label="Previous image">‹</button>
+
+      <figure class="frame">
+        <img id="photo" src="images/tco-lv-pool.jpg" alt="tco at the pool" />
+        <figcaption class="caption">
+          <p id="name" class="name">tco</p>
+          <p id="tag" class="tag">lv by the pool</p>
+        </figcaption>
+      </figure>
+
+      <button id="next" class="nav nav-right" type="button" aria-label="Next image">›</button>
+    </main>
+
+    <nav class="thumbs" id="thumbs" aria-label="Gallery thumbnails"></nav>
+  </section>
 
   <div id="enter" class="enter">
-    <button id="enter-btn" type="button">enter boofboys.xyz</button>
-    <p class="enter-note">music plays automatically</p>
+    <div class="enter-card panel">
+      <p class="eyebrow">boofboys.xyz</p>
+      <h2 class="enter-title">tap to enter</h2>
+      <p class="enter-copy">music starts on entry. use headphones if your parents are home.</p>
+      <button id="enter-btn" class="primary-btn" type="button">enter</button>
+    </div>
   </div>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
 </body>
 </html>
