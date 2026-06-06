@@ -38,12 +38,19 @@ const slides = [
 ];
 
 const YT_ID = "_ALPYlwYzGU";
+const YT_URL = `https://www.youtube.com/watch?v=${YT_ID}`;
 const YT_BASE = `https://www.youtube.com/embed/${YT_ID}`;
+const TRACK_FALLBACK = {
+  title: "you're on doxbin",
+  artist: "james bandz",
+  thumbnail: `https://i.ytimg.com/vi/${YT_ID}/hqdefault.jpg`,
+};
 
 let index = 0;
 let muted = false;
 let started = false;
 let currentView = "home";
+let visualizerOpen = false;
 
 const photo = document.getElementById("photo");
 const nameEl = document.getElementById("name");
@@ -63,6 +70,13 @@ const playerWrap = document.getElementById("player-wrap");
 const tabs = document.querySelectorAll(".tab");
 const homeView = document.getElementById("home-view");
 const galleryView = document.getElementById("gallery-view");
+const visualizer = document.getElementById("visualizer");
+const vizCloseBtn = document.getElementById("viz-close");
+const vizThumb = document.getElementById("viz-thumb");
+const vizTitle = document.getElementById("viz-title");
+const vizArtist = document.getElementById("viz-artist");
+const vizBars = document.getElementById("viz-bars");
+const vizStatus = document.getElementById("viz-status");
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -112,7 +126,7 @@ function buildThumbs() {
   slides.forEach((slide, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = `thumb${i === 0 ? " active" : ""}`;
+    btn.className = `thumb tween-btn${i === 0 ? " active" : ""}`;
     btn.setAttribute("aria-label", `${slide.name} - ${slide.tag}`);
 
     const img = document.createElement("img");
@@ -159,8 +173,77 @@ function ensureAudioFrame() {
   return frame;
 }
 
+function parseTrackMeta(oembedTitle) {
+  const bySplit = oembedTitle.split(/\s[-–—]\s/);
+  if (bySplit.length >= 2) {
+    return {
+      title: bySplit[0].trim().toLowerCase(),
+      artist: bySplit.slice(1).join(" - ").replace(/\s*-\s*topic$/i, "").trim().toLowerCase(),
+    };
+  }
+
+  return {
+    title: oembedTitle.trim().toLowerCase(),
+    artist: TRACK_FALLBACK.artist,
+  };
+}
+
+function applyTrackMeta({ title, artist, thumbnail }) {
+  vizTitle.textContent = title;
+  vizArtist.textContent = artist;
+  vizThumb.src = thumbnail;
+  vizThumb.alt = `${title} by ${artist}`;
+  nowPlaying.textContent = `♪ ${title}`;
+}
+
+async function loadTrackMeta() {
+  applyTrackMeta(TRACK_FALLBACK);
+
+  try {
+    const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(YT_URL)}&format=json`;
+    const response = await fetch(endpoint);
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const parsed = parseTrackMeta(data.title || TRACK_FALLBACK.title);
+
+    applyTrackMeta({
+      title: parsed.title,
+      artist: parsed.artist,
+      thumbnail: data.thumbnail_url || TRACK_FALLBACK.thumbnail,
+    });
+  } catch {
+    applyTrackMeta(TRACK_FALLBACK);
+  }
+}
+
+function setVisualizerBars(playing) {
+  vizBars.classList.toggle("playing", playing);
+  vizBars.classList.toggle("paused", !playing);
+  vizStatus.textContent = playing ? "playing" : "paused";
+}
+
+function openVisualizer() {
+  visualizer.hidden = false;
+  requestAnimationFrame(() => {
+    visualizer.classList.add("open");
+  });
+  visualizerOpen = true;
+  setVisualizerBars(started && !muted);
+}
+
+function closeVisualizer() {
+  visualizer.classList.remove("open");
+  visualizerOpen = false;
+  window.setTimeout(() => {
+    if (!visualizerOpen) visualizer.hidden = true;
+  }, 320);
+}
+
 function updateMusicUi() {
-  if (started && !muted) {
+  const isPlaying = started && !muted;
+
+  if (isPlaying) {
     nowPlaying.classList.remove("hidden");
     muteIcon.textContent = "♪";
   } else if (started && muted) {
@@ -170,15 +253,23 @@ function updateMusicUi() {
     nowPlaying.classList.add("hidden");
     muteIcon.textContent = "ø";
   }
+
+  if (visualizerOpen) {
+    setVisualizerBars(isPlaying);
+  }
 }
 
-function startMusic() {
+function startMusic({ showVisualizer = false } = {}) {
   const frame = ensureAudioFrame();
   const shouldMute = muted;
 
   frame.src = buildEmbedUrl({ autoplay: true, mute: shouldMute });
   started = true;
   updateMusicUi();
+
+  if (showVisualizer) {
+    openVisualizer();
+  }
 }
 
 function toggleMute() {
@@ -197,14 +288,15 @@ function toggleMute() {
 function enterSite() {
   enterOverlay.classList.add("hidden");
   muted = false;
-  startMusic();
+  startMusic({ showVisualizer: true });
 }
 
 enterBtn.addEventListener("click", enterSite);
 replayMusicBtn.addEventListener("click", () => {
   muted = false;
-  startMusic();
+  startMusic({ showVisualizer: true });
 });
+vizCloseBtn.addEventListener("click", closeVisualizer);
 goGalleryBtn.addEventListener("click", () => setView("gallery"));
 
 tabs.forEach((tab) => {
@@ -243,4 +335,5 @@ window.addEventListener(
 );
 
 buildThumbs();
+loadTrackMeta();
 updateMusicUi();
